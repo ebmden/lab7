@@ -166,7 +166,7 @@ def parse_rrq(packet, opcode):
     end_filename = packet.find(b'\x00')
     rqq_bytes['Filename'] = packet[2:end_filename]
     packet_sliced = packet[end_filename + 1:]  # slice this tho get the index to find mode
-    rqq_bytes['Mode'] = packet_sliced[end_filename + 1:packet.find(b'\x00\x00')]
+    rqq_bytes['Mode'] = packet_sliced[end_filename + 1:packet.find(b'\x00')]
 
     return rqq_bytes
 
@@ -202,7 +202,7 @@ def parse_error(packet, opcode):
     end_message = packet.find(b'\x00')
     error_bytes['Error Code'] = packet[2:end_message]
     packet_sliced = packet[end_message + 1:]
-    error_bytes['Error Message'] = packet_sliced[end_message +1:packet.find(b'\x00\x00')]
+    error_bytes['Error Message'] = packet_sliced[end_message +1:packet.find(b'\x00')]
     return error_bytes
 
 
