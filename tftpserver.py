@@ -18,6 +18,8 @@ Summary: (Summarize your experience with the lab, what you learned, what you lik
 
 
 
+    server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    #server_socket.sendto(data, ('localhost', TFTP_PORT))
 
 
 """
@@ -48,15 +50,9 @@ def main():
     #   functions as needed                            #
     ####################################################
 
-    # create client socket
-    # recieve message from client in
-    # still needs to close the server socket
-
-    # get opcode, filename, and mode from RRQ
-    # send
-    # get ACK opcode:04 Block#:00
-    # get
-
+    packet_fields = receive_packets(client_socket)
+    if(packet_fields['Opcode'] == 1):
+        handle_rrq(client_socket, packet_fields['Filename'], packet_fields['ClientAddr'])
 
 
     ####################################################
@@ -136,12 +132,15 @@ def receive_packets(client_socket):
     # recv packet from client
     (packet, client_address) = client_socket.recvfrom(MAX_UDP_PACKET_SIZE)
     # get opcode of packet - 1st 2 bytes
-    opcode = packet[0] + packet[1]
+    opcode = int.from_bytes(packet[0:2], 'big')
     # based on opcode determine which protocol to use to pasrse through packet
-    method_call = {b'\x30\x31': parse_rrq,
-                   b'\x30\x34': parse_ack,
-                   b'\x30\x35': parse_error}
-    field_dict = method_call[opcode](packet, opcode)
+    method_calls = [parse_rrq,
+                    None,
+                    None,
+                    parse_ack,
+                    parse_error]
+    field_dict = method_calls[opcode-1](packet, opcode)
+    field_dict['ClientAddr'] = client_address
     # return dict *to be used by main()*
     return field_dict
 
@@ -163,10 +162,10 @@ def parse_rrq(packet, opcode):
     rqq_bytes['Opcode'] = opcode
 
     # starting at index 2 -> 1 null byte to indc end of  filename
-    end_filename = packet.find(b'\x00')
-    rqq_bytes['Filename'] = packet[2:end_filename]
+    end_filename = packet[2:].index(b'\x00')
+    rqq_bytes['Filename'] = packet[2:end_filename+2]
     packet_sliced = packet[end_filename + 1:]  # slice this tho get the index to find mode
-    rqq_bytes['Mode'] = packet_sliced[end_filename + 1:packet.find(b'\x00')]
+    rqq_bytes['Mode'] = packet_sliced[end_filename + 1:packet.index(b'\x00')]
 
     return rqq_bytes
 
@@ -197,14 +196,37 @@ def parse_error(packet, opcode):
     :rtype: dictionary
     :author: Eden Basso
     """
+
     error_bytes = dict()
     error_bytes['Opcode'] = opcode
-    end_message = packet.find(b'\x00')
-    error_bytes['Error Code'] = packet[2:end_message]
-    packet_sliced = packet[end_message + 1:]
-    error_bytes['Error Message'] = packet_sliced[end_message +1:packet.find(b'\x00')]
+    error_bytes['Error Code'] = packet[2:4]
+    error_bytes['Error Message'] = packet[4:]
     return error_bytes
 
+def handle_rrq(client_socket, filename, client_address):
+    """
+    ...
+
+    :author: Lucas Gral
+    """
+    block_count = get_file_block_count(filename.decode("ASCII"))
+    if(block_count==-1):
+        client_socket.sendto(b'0501File "' + filename + b'" not found\x00', client_address)
+        print("File not found:", filename)
+        exit(1)
+
+    print("sending", block_count, "blocks")
+    for i in range(1, block_count+1):
+        block_data = get_file_block(filename.decode("ASCII"), i)
+        send_data = b'\x00\x03' + i.to_bytes(2, 'big') + block_data
+        client_socket.sendto(send_data, client_address)
+        resp = receive_packets(client_socket)
+        if resp['Opcode'] == 5: #if error
+            print("ERROR on block", i, resp)
+            print("What was sent:", send_data)
+            exit(1)
+        elif resp['Opcode'] == 4: #if ack
+            print("ack block", resp['Block #'])
 
 main()
 
