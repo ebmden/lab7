@@ -9,9 +9,18 @@
 
 A Trivial File Transfer Protocol Server
 
-Introduction: (Describe the lab in your own words)
-
-
+Introduction: (Describe the lab in your own words) LG
+    The goal of this lab is to impliment a TFTP server that can send files to a client that's requesting them. I also plan to
+implement the ability for this TFTP server to handle PUT/WRQ requests and to let the server handle multiple requests
+in a row as well (as opposed to the minimum requirement of handling one request, and then closing the server).
+Our server and the client will communicate by sending certain types of packets back and forth. The packets will indicate
+information about the TFTP process and sometimes they will contain data. For instance, a DATA packet indicates that file data is
+being sent/received, and it could contain the block contents of a file.
+    A lot of template code was provided for us to focus on the task of implementing the server,
+but I did have to change put_file_block since it didn't work correctly in its previous state:
+it overwrote the contents of the file with 0s every time it was called, so if the resulting file were supposed to be something like
+the bytes  0A 0B 0C 0D AA BB CC DD  with an example block size of two bytes, then the result would be  00 00 00 00 00 00 CC DD
+with the old implementation of put_file_block.
 
 
 Summary: (Summarize your experience with the lab, what you learned, what you liked,what you disliked, and any suggestions you have for improvement)
@@ -174,7 +183,7 @@ def parse_rq(packet, opcode):
 
 def parse_data(packet, opcode):
     """
-    ...
+    Takes the bytes from a received DATA packet, and organized the information into a dictionary.
     :param packet: the packet determined to be DATA
     :param opcode: the opcode of data
     :return: dict of packet data
@@ -223,8 +232,11 @@ def parse_error(packet, opcode):
 
 def handle_rrq(client_socket, filename, client_address):
     """
-    ...
-
+    Sends file blocks to client so they can be saved on another computer.
+    Also handles receiving ACKs and errors.
+    :param client_socket: The client socket to send/receive blocks through
+    :param filename: name of file to send blocks from
+    :param client_address: address of client
     :author: Lucas Gral
     """
     block_count = get_file_block_count(filename.decode("ASCII"))
@@ -250,8 +262,11 @@ def handle_rrq(client_socket, filename, client_address):
 
 def handle_wrq(client_socket, filename, client_address):
     """
-    ...
-
+    Receives file blocks from client, and saves them into a file.
+    Also handles sending ACKs and handling errors.
+    :param client_socket: The client socket to send/receive blocks through
+    :param filename: the filename to save to
+    :param client_address: the adress of the client
     :author: Lucas Gral
     """
     #acknowledge write req via sending ack with block size of 0
