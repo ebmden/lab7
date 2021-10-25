@@ -9,19 +9,19 @@
 
 A Trivial File Transfer Protocol Server
 
-Introduction: (Describe the lab in your own words)
+Introduction: (Describe the lab in your own words) - LG
 
 
 
 
-Summary: (Summarize your experience with the lab, what you learned, what you liked,what you disliked, and any suggestions you have for improvement)
-
-
-
-    server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    #server_socket.sendto(data, ('localhost', TFTP_PORT))
-
-
+Summary: (Summarize your experience with the lab, what you learned, what you liked,what you disliked, and any suggestions you have for improvement) - EB
+While completing this lab, I learned about the sequential steps a TFTP server executes inorder to fulfil a client's RRQ.
+More specifically, I learned about the protocol both TFTP servers and clients use inorder to send/parse different types
+of messages to another (RRQ, ACK, DATA, ERROR) as well as how to split up a block to be sent back to a client.
+I enjoyed this lab because it allowed me to work with UDP sockets, which taught me how to handle and parse through a
+large amount of data all at once vs. working with a TCP socket in our past labs. I have no specific improvements for
+this lab. However, I will also note how completing the TFTP exercises beforehand and reading through the RFC really
+helped me understand the protocol.
 """
 
 # import modules -- not using "from socket import *" in order to selectively use items with "socket." prefix
@@ -38,6 +38,7 @@ MAX_UDP_PACKET_SIZE = 65536
 def main():
     """
     Processes a single TFTP request
+    :author: Lucas Gral
     """
 
     client_socket = socket_setup()
@@ -51,7 +52,7 @@ def main():
     ####################################################
 
     packet_fields = receive_packets(client_socket)
-    if(packet_fields['Opcode'] == 1):
+    if packet_fields['Opcode'] == 1:
         handle_rrq(client_socket, packet_fields['Filename'], packet_fields['ClientAddr'])
 
 
@@ -106,7 +107,7 @@ def put_file_block(filename, block_data, block_number):
     file.write(block_data)
     file.close()
 
-# Server
+
 def socket_setup():
     """
     Sets up a UDP socket to listen on the TFTP port
@@ -125,6 +126,8 @@ def socket_setup():
 def receive_packets(client_socket):
     """
     Receives and handles packets from client such as RRQ, ACK, and ERROR
+    :param client_socket: UDP socket that represents the client's data packet and address
+    :type: socket.pyi
     :return: dictionary with parsed through bytes
     :rtype: dictionary
     :author: Eden Basso
@@ -203,6 +206,7 @@ def parse_error(packet, opcode):
     error_bytes['Error Message'] = packet[4:]
     return error_bytes
 
+
 def handle_rrq(client_socket, filename, client_address):
     """
     ...
@@ -210,7 +214,7 @@ def handle_rrq(client_socket, filename, client_address):
     :author: Lucas Gral
     """
     block_count = get_file_block_count(filename.decode("ASCII"))
-    if(block_count==-1):
+    if block_count == -1:
         client_socket.sendto(b'0501File "' + filename + b'" not found\x00', client_address)
         print("File not found:", filename)
         exit(1)
@@ -221,11 +225,11 @@ def handle_rrq(client_socket, filename, client_address):
         send_data = b'\x00\x03' + i.to_bytes(2, 'big') + block_data
         client_socket.sendto(send_data, client_address)
         resp = receive_packets(client_socket)
-        if resp['Opcode'] == 5: #if error
+        if resp['Opcode'] == 5:  # if error
             print("ERROR on block", i, resp)
             print("What was sent:", send_data)
             exit(1)
-        elif resp['Opcode'] == 4: #if ack
+        elif resp['Opcode'] == 4:  # if ack
             print("ack block", resp['Block #'])
 
 main()
